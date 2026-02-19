@@ -114,27 +114,71 @@ function splitEmojis(str: string): string[] {
   return str.match(regex) || [];
 }
 
-export function encrypt(message: string, password: string): string {
+async function compressBytes(data: Uint8Array): Promise<Uint8Array> {
+  const cs = new CompressionStream("deflate");
+  const writer = cs.writable.getWriter();
+  writer.write(new Uint8Array(data) as any);
+  writer.close();
+  const chunks: Uint8Array[] = [];
+  const reader = cs.readable.getReader();
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunks.push(value);
+  }
+  const totalLen = chunks.reduce((s, c) => s + c.length, 0);
+  const result = new Uint8Array(totalLen);
+  let offset = 0;
+  for (const chunk of chunks) {
+    result.set(chunk, offset);
+    offset += chunk.length;
+  }
+  return result;
+}
+
+async function decompressBytes(data: Uint8Array): Promise<Uint8Array> {
+  const ds = new DecompressionStream("deflate");
+  const writer = ds.writable.getWriter();
+  writer.write(new Uint8Array(data) as any);
+  writer.close();
+  const chunks: Uint8Array[] = [];
+  const reader = ds.readable.getReader();
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunks.push(value);
+  }
+  const totalLen = chunks.reduce((s, c) => s + c.length, 0);
+  const result = new Uint8Array(totalLen);
+  let offset = 0;
+  for (const chunk of chunks) {
+    result.set(chunk, offset);
+    offset += chunk.length;
+  }
+  return result;
+}
+
+export async function encrypt(message: string, password: string): Promise<string> {
   if (!message || !password) throw new Error("Message and password are required");
   const emojiSet = shuffleEmojis(password);
   const encoder = new TextEncoder();
-  const bytes = encoder.encode(message);
-  // Prepend length byte to preserve leading zeros
-  const lenByte = new Uint8Array([bytes.length & 0xff, (bytes.length >> 8) & 0xff]);
-  const combined = new Uint8Array([...lenByte, ...bytes]);
+  const raw = encoder.encode(message);
+  const compressed = await compressBytes(raw);
+  const lenByte = new Uint8Array([(compressed.length & 0xff), (compressed.length >> 8) & 0xff]);
+  const combined = new Uint8Array([...lenByte, ...compressed]);
   const bigInt = bytesToBigInt(combined);
   return bigIntToEmojis(bigInt, emojiSet);
 }
 
-export function decrypt(emojiString: string, password: string): string {
+export async function decrypt(emojiString: string, password: string): Promise<string> {
   if (!emojiString || !password) throw new Error("Emoji string and password are required");
   const emojiSet = shuffleEmojis(password);
   const emojis = splitEmojis(emojiString);
   const bigInt = emojisToIndex(emojis, emojiSet);
   const allBytes = bigIntToBytes(bigInt);
-  // Extract length from first 2 bytes
   const len = allBytes[0] | (allBytes[1] << 8);
-  const messageBytes = allBytes.slice(2, 2 + len);
+  const compressedBytes = allBytes.slice(2, 2 + len);
+  const decompressed = await decompressBytes(compressedBytes);
   const decoder = new TextDecoder();
-  return decoder.decode(messageBytes);
+  return decoder.decode(decompressed);
 }
