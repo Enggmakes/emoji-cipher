@@ -21,9 +21,9 @@ const Index = () => {
       return;
     }
     setProcessing(true);
-    setTimeout(() => {
+    setTimeout(async () => {
       try {
-        const result = mode === "encrypt" ? encrypt(input, password) : decrypt(input, password);
+        const result = await (mode === "encrypt" ? encrypt(input, password) : decrypt(input, password));
         setOutput(result);
       } catch (e: any) {
         setError(mode === "encrypt" ? "Encryption failed. Check your input." : "Decryption failed. Wrong key or corrupted data.");
