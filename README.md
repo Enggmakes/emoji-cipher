@@ -1,73 +1,66 @@
-# Welcome to your Lovable project
+# EmojiCipher 🔐
 
-## Project info
+> End-to-end client-side emoji encryption with Apple Liquid glassmorphic aesthetics. High-density, zero-knowledge emoji cryptography running 100% locally in your browser.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+![EmojiCipher Preview](/public/favicon.svg)
 
-## How can I edit this code?
+## ✨ Highlights
 
-There are several ways of editing your application.
+- **Apple Liquid Design**: Translucent specular glassmorphic cards, fluid mesh gradient canvas, and responsive spring animations inspired by iOS 18 / Apple Vision Pro.
+- **Robust 966-Base Permutation**: Uses a deduplicated pool of 966 unique Unicode emojis with deterministic password-seeded polynomial shuffle.
+- **Tamper-Evident CRC32 & Deflate Stream**: Incorporates a 4-byte CRC32 integrity checksum for instant password validation, preventing corrupt decompression.
+- **Cross-Platform Resilient**: Automatically normalizes Unicode Variation Selectors (`\uFE0F`), whitespace, and line breaks—allowing messages copied across WhatsApp, Telegram, iMessage, and Discord to decrypt without errors.
+- **1-Click Share Links**: Generate instant decrypt links (`?c=...`) that automatically load the cipher for recipients.
+- **100% Zero-Knowledge**: All encryption and decryption runs entirely in client-side memory using the native Web Streams API (`CompressionStream` / `DecompressionStream`).
 
-**Use Lovable**
+---
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+## 🚀 Quick Start
 
-Changes made via Lovable will be committed automatically to this repo.
+### Installation
 
-**Use your preferred IDE**
+```bash
+# Clone the repository
+git clone https://github.com/Enggmakes/emoji-cipher.git
+cd emoji-cipher
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+# Install dependencies (pnpm recommended)
+pnpm install
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+# Start development server
+pnpm run dev
 ```
 
-**Edit a file directly in GitHub**
+### Run Tests
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+```bash
+pnpm test
+```
 
-**Use GitHub Codespaces**
+### Build for Production
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+```bash
+pnpm run build
+```
 
-## What technologies are used for this project?
+---
 
-This project is built with:
+## 🔒 Cryptographic Architecture
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+1. **Input Preprocessing**: UTF-8 encoding into raw byte buffer.
+2. **Deflate Compression**: High-efficiency compression stream minimizing output emoji length.
+3. **Packet Framing (v2)**:
+   - `[0xEC, 0x02]` (Magic Header)
+   - `[CRC32: 4 bytes]` (Uncompressed message checksum)
+   - `[Payload: compressed bytes]`
+4. **MSB Sentinel & BigInt Encoding**: A leading non-zero sentinel byte (`0x01`) guarantees leading `0x00` bytes are never lost during BigInt arithmetic.
+5. **Deterministic Base-966 Mapping**: Converts the BigInt into an emoji sequence using the password-shuffled emoji dictionary.
 
-## How can I deploy this project?
+---
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+## 🛠️ Stack
 
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+- **Framework**: React 18 + Vite + TypeScript
+- **Styling**: Tailwind CSS + Custom Apple Liquid Glass Tokens
+- **Icons**: Lucide React
+- **Testing**: Vitest + Testing Library
