@@ -1101,47 +1101,13 @@ function crc32(buf: Uint8Array): number {
 }
 
 async function compressBytes(data: Uint8Array): Promise<Uint8Array> {
-  const cs = new CompressionStream("deflate");
-  const writer = cs.writable.getWriter();
-  await writer.write(new Uint8Array(data) as any);
-  await writer.close();
-  const chunks: Uint8Array[] = [];
-  const reader = cs.readable.getReader();
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    chunks.push(value);
-  }
-  const totalLen = chunks.reduce((s, c) => s + c.length, 0);
-  const result = new Uint8Array(totalLen);
-  let offset = 0;
-  for (const chunk of chunks) {
-    result.set(chunk, offset);
-    offset += chunk.length;
-  }
-  return result;
+  const stream = new Response(new Uint8Array(data)).body!.pipeThrough(new CompressionStream("deflate"));
+  return new Uint8Array(await new Response(stream).arrayBuffer());
 }
 
 async function decompressBytes(data: Uint8Array): Promise<Uint8Array> {
-  const ds = new DecompressionStream("deflate");
-  const writer = ds.writable.getWriter();
-  await writer.write(new Uint8Array(data) as any);
-  await writer.close();
-  const chunks: Uint8Array[] = [];
-  const reader = ds.readable.getReader();
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    chunks.push(value);
-  }
-  const totalLen = chunks.reduce((s, c) => s + c.length, 0);
-  const result = new Uint8Array(totalLen);
-  let offset = 0;
-  for (const chunk of chunks) {
-    result.set(chunk, offset);
-    offset += chunk.length;
-  }
-  return result;
+  const stream = new Response(new Uint8Array(data)).body!.pipeThrough(new DecompressionStream("deflate"));
+  return new Uint8Array(await new Response(stream).arrayBuffer());
 }
 
 export interface CipherMetadata {
