@@ -5,29 +5,16 @@ import {
   Unlock,
   Copy,
   Trash2,
-  ArrowRightLeft,
   Eye,
   EyeOff,
   Check,
-  Share2,
-  Sparkles,
-  ShieldCheck,
   KeyRound,
-  RotateCcw,
-  Zap,
-  Info,
   ExternalLink,
+  Loader2,
 } from "lucide-react";
-import AppleLiquidBackground from "@/components/AppleLiquidBackground";
 
-const SAMPLE_MESSAGES = [
-  { label: "Secret Note 🤫", text: "Meet me at the station coffee shop at 8:00 PM tonight. Don't be late!" },
-  { label: "Secret Code 🔑", text: "Alpha project token: demo_token_alpha_9942857291847" },
-  { label: "Private Pin 💳", text: "Vault Access Code: 8492-3019 • Emergency Override: 7712" },
-];
-
-function calculateKeyStrength(key: string): { score: number; label: string; color: string } {
-  if (!key) return { score: 0, label: "Empty", color: "bg-slate-700" };
+function calculateKeyStrength(key: string): { label: string; color: string; width: string } {
+  if (!key) return { label: "", color: "bg-slate-700", width: "0%" };
   let score = 0;
   if (key.length >= 6) score += 1;
   if (key.length >= 10) score += 1;
@@ -35,23 +22,19 @@ function calculateKeyStrength(key: string): { score: number; label: string; colo
   if (/[0-9]/.test(key)) score += 1;
   if (/[^A-Za-z0-9]/.test(key)) score += 1;
 
-  if (score <= 1) return { score: 1, label: "Weak", color: "bg-rose-500" };
-  if (score === 2) return { score: 2, label: "Fair", color: "bg-amber-500" };
-  if (score === 3 || score === 4) return { score: 3, label: "Strong", color: "bg-emerald-500" };
-  return { score: 4, label: "Military-Grade", color: "bg-cyan-400" };
+  if (score <= 1) return { label: "Weak key", color: "bg-rose-500", width: "25%" };
+  if (score === 2) return { label: "Moderate", color: "bg-amber-500", width: "50%" };
+  if (score === 3 || score === 4) return { label: "Strong", color: "bg-emerald-500", width: "75%" };
+  return { label: "Very strong", color: "bg-cyan-400", width: "100%" };
 }
 
-function generateStrongKey(): string {
-  const words = [
-    "liquid", "aurora", "cipher", "quantum", "crystal", "nebula",
-    "shadow", "vault", "velvet", "zenith", "cobalt", "emerald",
-    "pulsar", "falcon", "solaris", "mirage", "matrix", "beacon"
-  ];
-  const w1 = words[Math.floor(Math.random() * words.length)];
-  const w2 = words[Math.floor(Math.random() * words.length)];
-  const num = Math.floor(100 + Math.random() * 900);
-  const sym = ["!", "@", "#", "$", "%", "&"][Math.floor(Math.random() * 6)];
-  return `${w1}-${w2}-${num}${sym}`;
+function generateSecureKey(): string {
+  const chars = "abcdefghjkmnpqrstuvwxyz23456789";
+  let part1 = "";
+  let part2 = "";
+  for (let i = 0; i < 4; i++) part1 += chars[Math.floor(Math.random() * chars.length)];
+  for (let i = 0; i < 4; i++) part2 += chars[Math.floor(Math.random() * chars.length)];
+  return `key-${part1}-${part2}`;
 }
 
 const Index: React.FC = () => {
@@ -65,25 +48,21 @@ const Index: React.FC = () => {
   const [copiedLink, setCopiedLink] = useState(false);
   const [processing, setProcessing] = useState(false);
 
-  // Auto-detect cipher from URL params (?c=... or ?cipher=...)
+  // Auto-load cipher from URL (?c=... or ?cipher=...)
   useEffect(() => {
     try {
       const params = new URLSearchParams(window.location.search);
-      const cipherFromUrl = params.get("c") || params.get("cipher");
-      if (cipherFromUrl) {
+      const urlCipher = params.get("c") || params.get("cipher");
+      if (urlCipher) {
         setMode("decrypt");
-        setInput(decodeURIComponent(cipherFromUrl));
+        setInput(decodeURIComponent(urlCipher));
       }
     } catch {
-      // Ignore URL parsing errors
+      // Ignore URL errors
     }
   }, []);
 
-  // Compute key strength
   const keyStrength = useMemo(() => calculateKeyStrength(password), [password]);
-
-  // Emoji count & input length
-  const inputByteLength = useMemo(() => new TextEncoder().encode(input).length, [input]);
 
   const outputEmojiCount = useMemo(() => {
     if (!output || mode !== "encrypt") return 0;
@@ -100,7 +79,7 @@ const Index: React.FC = () => {
       return;
     }
     if (!password.trim()) {
-      setError("Please enter a shared secret key.");
+      setError("Please enter a secret key.");
       return;
     }
 
@@ -115,13 +94,12 @@ const Index: React.FC = () => {
         setOutput(result);
       }
     } catch (e: any) {
-      setError(e.message || (mode === "encrypt" ? "Encryption failed. Please check your message." : "Decryption failed. Please check your key or cipher text."));
+      setError(e.message || (mode === "encrypt" ? "Encryption failed." : "Decryption failed. Please check your key."));
     } finally {
       setProcessing(false);
     }
   }, [input, password, mode]);
 
-  // Handle Ctrl+Enter / Cmd+Enter
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
       e.preventDefault();
@@ -134,7 +112,7 @@ const Index: React.FC = () => {
     try {
       await navigator.clipboard.writeText(output);
       setCopiedCipher(true);
-      setTimeout(() => setCopiedCipher(false), 2200);
+      setTimeout(() => setCopiedCipher(false), 2000);
     } catch {
       // Fallback
     }
@@ -147,27 +125,11 @@ const Index: React.FC = () => {
       url.searchParams.set("c", output);
       await navigator.clipboard.writeText(url.toString());
       setCopiedLink(true);
-      setTimeout(() => setCopiedLink(false), 2200);
+      setTimeout(() => setCopiedLink(false), 2000);
     } catch {
       // Fallback
     }
   }, [output, mode]);
-
-  const handleNativeShare = useCallback(async () => {
-    if (!output) return;
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: "Secret Emoji Cipher",
-          text: output,
-        });
-      } catch {
-        // User cancelled share
-      }
-    } else {
-      handleCopyCipher();
-    }
-  }, [output, handleCopyCipher]);
 
   const handleClear = useCallback(() => {
     setInput("");
@@ -175,52 +137,41 @@ const Index: React.FC = () => {
     setError("");
   }, []);
 
-  const toggleMode = useCallback((newMode: "encrypt" | "decrypt") => {
-    if (newMode === mode) return;
-    setMode(newMode);
+  const switchMode = useCallback((targetMode: "encrypt" | "decrypt") => {
+    if (targetMode === mode) return;
+    setMode(targetMode);
     setInput(output);
     setOutput("");
     setError("");
   }, [mode, output]);
 
   return (
-    <div className="relative min-h-screen flex flex-col items-center justify-between px-4 py-8 md:py-12 selection:bg-cyan-500/25 selection:text-cyan-200">
-      <AppleLiquidBackground mode={mode} />
-
-      {/* Main Container */}
-      <main className="relative z-10 w-full max-w-2xl mx-auto space-y-7">
+    <div className="min-h-screen bg-[#090a0f] text-[#f8fafc] flex flex-col justify-between px-4 py-10 selection:bg-amber-500/30 selection:text-amber-200">
+      <main className="w-full max-w-xl mx-auto space-y-6">
         {/* Header */}
-        <header className="text-center space-y-3">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 apple-glass-pill text-xs font-medium text-cyan-300/90 shadow-sm">
-            <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
-            <span>Apple Liquid Cryptography • Zero-Knowledge</span>
+        <header className="text-center space-y-2">
+          <div className="flex items-center justify-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-[#141720] border border-[#222633] flex items-center justify-center text-amber-400">
+              {mode === "encrypt" ? <Lock className="w-5 h-5" /> : <Unlock className="w-5 h-5 text-sky-400" />}
+            </div>
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-white">
+              EmojiCipher
+            </h1>
           </div>
-
-          <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-white flex items-center justify-center gap-3">
-            <span>EmojiCipher</span>
-            <span className="inline-block p-1.5 rounded-2xl bg-gradient-to-tr from-cyan-500/20 to-violet-500/20 border border-white/10 shadow-inner">
-              {mode === "encrypt" ? (
-                <Lock className="w-7 h-7 text-cyan-400" />
-              ) : (
-                <Unlock className="w-7 h-7 text-amber-400" />
-              )}
-            </span>
-          </h1>
-
-          <p className="text-sm md:text-base text-slate-400 max-w-md mx-auto leading-relaxed">
-            Encrypt confidential messages into high-density emoji streams. 100% client-side, zero data retention.
+          <p className="text-sm text-slate-400">
+            End-to-end client-side emoji encryption
           </p>
         </header>
 
         {/* Mode Selector */}
         <div className="flex justify-center">
-          <nav aria-label="Cipher Mode" className="p-1 apple-glass-pill flex items-center gap-1">
+          <div className="p-1 bg-[#101218] border border-[#1f232e] rounded-xl flex items-center gap-1">
             <button
               type="button"
-              onClick={() => toggleMode("encrypt")}
-              className={`px-5 py-2 rounded-full text-xs md:text-sm font-semibold transition-all duration-300 flex items-center gap-2 ${
+              onClick={() => switchMode("encrypt")}
+              className={`px-5 py-2 rounded-lg text-xs font-semibold transition-colors flex items-center gap-2 ${
                 mode === "encrypt"
-                  ? "bg-gradient-to-r from-cyan-500/90 to-blue-600 text-white shadow-lg shadow-cyan-500/20"
+                  ? "bg-[#1f232e] text-amber-400 shadow-sm"
                   : "text-slate-400 hover:text-slate-200"
               }`}
             >
@@ -230,153 +181,124 @@ const Index: React.FC = () => {
 
             <button
               type="button"
-              onClick={() => toggleMode("decrypt")}
-              className={`px-5 py-2 rounded-full text-xs md:text-sm font-semibold transition-all duration-300 flex items-center gap-2 ${
+              onClick={() => switchMode("decrypt")}
+              className={`px-5 py-2 rounded-lg text-xs font-semibold transition-colors flex items-center gap-2 ${
                 mode === "decrypt"
-                  ? "bg-gradient-to-r from-amber-500/90 to-orange-600 text-white shadow-lg shadow-amber-500/20"
+                  ? "bg-[#1f232e] text-sky-400 shadow-sm"
                   : "text-slate-400 hover:text-slate-200"
               }`}
             >
               <Unlock className="w-3.5 h-3.5" />
               <span>Decrypt</span>
             </button>
-          </nav>
+          </div>
         </div>
 
-        {/* Main Card */}
-        <div className="apple-glass p-6 md:p-8 space-y-6">
-          {/* Sample quick picks for Encrypt mode */}
-          {mode === "encrypt" && !input && (
-            <div className="space-y-2">
-              <span className="text-xs font-medium text-slate-400 flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
-                Quick test templates:
-              </span>
-              <div className="flex flex-wrap gap-2">
-                {SAMPLE_MESSAGES.map((sample) => (
-                  <button
-                    key={sample.label}
-                    onClick={() => {
-                      setInput(sample.text);
-                      if (!password) setPassword("AppleSecretKey2026!");
-                    }}
-                    className="apple-glass-pill px-3 py-1 text-xs text-slate-300 hover:text-cyan-300 hover:border-cyan-500/40 transition-colors"
-                  >
-                    {sample.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
+        {/* Main Panel */}
+        <div className="stealth-card p-5 md:p-6 space-y-5">
           {/* Input Field */}
           <div className="space-y-2">
-            <div className="flex justify-between items-center text-xs font-semibold text-slate-300">
-              <label htmlFor="message-input" className="flex items-center gap-1.5">
-                <span>{mode === "encrypt" ? "Plaintext Message" : "Emoji Cipher Stream"}</span>
+            <div className="flex justify-between items-center text-xs font-medium text-slate-300">
+              <label htmlFor="text-input">
+                {mode === "encrypt" ? "Plaintext Message" : "Emoji Cipher"}
               </label>
               <span className="text-slate-400 font-mono text-[11px]">
-                {mode === "encrypt" ? `${inputByteLength} bytes` : `${input.length} chars`}
+                {input.length} chars
               </span>
             </div>
 
             <textarea
-              id="message-input"
+              id="text-input"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder={
                 mode === "encrypt"
-                  ? "Type or paste your secret message here..."
-                  : "Paste the emoji cipher stream here (e.g. 🌊🦁⚡🌮🔮...)"
+                  ? "Type or paste your message..."
+                  : "Paste emoji cipher here..."
               }
               rows={4}
-              className="apple-glass-input w-full p-4 text-sm leading-relaxed resize-none focus:ring-0"
+              className="stealth-input w-full p-3.5 text-sm font-mono leading-relaxed resize-none"
             />
           </div>
 
-          {/* Secret Key Input with Generator & Strength */}
-          <div className="space-y-2.5">
-            <div className="flex justify-between items-center text-xs font-semibold text-slate-300">
-              <label htmlFor="secret-key" className="flex items-center gap-1.5">
+          {/* Secret Key Input */}
+          <div className="space-y-2">
+            <div className="flex justify-between items-center text-xs font-medium text-slate-300">
+              <label htmlFor="key-input" className="flex items-center gap-1.5">
                 <KeyRound className="w-3.5 h-3.5 text-slate-400" />
-                <span>Secret Key (Password)</span>
+                <span>Secret Key</span>
               </label>
 
               <button
                 type="button"
-                onClick={() => setPassword(generateStrongKey())}
-                className="text-[11px] text-cyan-400 hover:text-cyan-300 flex items-center gap-1 transition-colors"
+                onClick={() => setPassword(generateSecureKey())}
+                className="text-[11px] text-amber-400 hover:text-amber-300 transition-colors"
               >
-                <Sparkles className="w-3 h-3" />
                 Generate Key
               </button>
             </div>
 
             <div className="relative">
               <input
-                id="secret-key"
+                id="key-input"
                 type={showPassword ? "text" : "password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="Enter shared secret key..."
-                className="apple-glass-input w-full p-3.5 pr-12 text-sm font-mono tracking-wider"
+                className="stealth-input w-full p-3 pr-11 text-sm font-mono"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition-colors"
-                title={showPassword ? "Hide key" : "Show key"}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 transition-colors"
+                title={showPassword ? "Hide password" : "Show password"}
               >
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
 
-            {/* Key Strength Indicator */}
+            {/* Subtle Key Strength Bar */}
             {password && (
-              <div className="flex items-center gap-2 pt-1 text-xs">
-                <div className="flex-1 h-1.5 bg-slate-800 rounded-full overflow-hidden flex gap-1 p-0.5">
-                  {[1, 2, 3, 4].map((step) => (
-                    <div
-                      key={step}
-                      className={`h-full flex-1 rounded-full transition-all duration-300 ${
-                        step <= keyStrength.score ? keyStrength.color : "bg-transparent"
-                      }`}
-                    />
-                  ))}
+              <div className="space-y-1 pt-1">
+                <div className="w-full h-1 bg-[#1a1d26] rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-200 ${keyStrength.color}`}
+                    style={{ width: keyStrength.width }}
+                  />
                 </div>
-                <span className="text-[11px] font-medium text-slate-400">
-                  Key Strength: <strong className="text-slate-200">{keyStrength.label}</strong>
-                </span>
+                <div className="flex justify-between text-[11px] text-slate-400">
+                  <span>{keyStrength.label}</span>
+                </div>
               </div>
             )}
           </div>
 
           {/* Action Row */}
-          <div className="flex gap-3 pt-2">
+          <div className="flex gap-2.5 pt-1">
             <button
               type="button"
               onClick={handleProcess}
               disabled={processing}
-              className={`apple-liquid-btn ${
-                mode === "decrypt" ? "apple-liquid-btn-decrypt" : ""
-              } flex-1 py-3.5 px-6 flex items-center justify-center gap-2.5 text-sm md:text-base disabled:opacity-50`}
+              className={`flex-1 py-3 px-5 text-sm flex items-center justify-center gap-2 ${
+                mode === "encrypt" ? "stealth-btn-amber" : "stealth-btn-teal"
+              } disabled:opacity-50`}
             >
               {processing ? (
                 <>
-                  <RotateCcw className="w-4 h-4 animate-spin" />
+                  <Loader2 className="w-4 h-4 animate-spin" />
                   <span>Processing...</span>
                 </>
               ) : mode === "encrypt" ? (
                 <>
                   <Lock className="w-4 h-4" />
-                  <span>Encrypt into Emojis</span>
+                  <span>Encrypt Message</span>
                 </>
               ) : (
                 <>
                   <Unlock className="w-4 h-4" />
-                  <span>Decrypt Message</span>
+                  <span>Decrypt Cipher</span>
                 </>
               )}
             </button>
@@ -384,57 +306,48 @@ const Index: React.FC = () => {
             <button
               type="button"
               onClick={handleClear}
-              className="apple-glass-icon-btn px-4 text-slate-400 hover:text-rose-400 hover:border-rose-500/30"
+              className="stealth-icon-btn px-3.5"
               title="Clear all fields"
             >
               <Trash2 className="w-4 h-4" />
             </button>
           </div>
 
-          {/* Error Message */}
+          {/* Error Banner */}
           {error && (
-            <div className="p-4 rounded-xl bg-rose-950/40 border border-rose-500/30 text-rose-200 text-xs md:text-sm flex items-start gap-3 backdrop-blur-md animate-in fade-in slide-in-from-top-2 duration-200">
-              <span className="text-rose-400 text-base">⚠️</span>
-              <div className="space-y-1">
-                <p className="font-semibold text-rose-100">Operation Error</p>
-                <p className="text-rose-300/90 leading-relaxed">{error}</p>
-              </div>
+            <div className="p-3.5 rounded-lg bg-rose-950/40 border border-rose-800/40 text-rose-300 text-xs flex items-center gap-2">
+              <span className="text-rose-400">⚠️</span>
+              <span>{error}</span>
             </div>
           )}
 
           {/* Output Section */}
           {output && (
-            <div className="space-y-3 pt-2 animate-in fade-in slide-in-from-bottom-3 duration-300">
-              <div className="flex justify-between items-center text-xs font-semibold text-slate-300">
-                <span className="flex items-center gap-1.5">
-                  <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                  <span>{mode === "encrypt" ? "Encrypted Output" : "Decrypted Secret"}</span>
-                </span>
-
+            <div className="space-y-2.5 pt-2 border-t border-[#1f232e]">
+              <div className="flex justify-between items-center text-xs font-medium text-slate-300">
+                <span>{mode === "encrypt" ? "Encrypted Emojis" : "Decrypted Result"}</span>
                 {mode === "encrypt" && outputEmojiCount > 0 && (
-                  <span className="text-[11px] font-mono text-cyan-300 apple-glass-pill px-2.5 py-0.5">
-                    {outputEmojiCount} emojis ({output.length} glyphs)
+                  <span className="text-[11px] font-mono text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded">
+                    {outputEmojiCount} emojis
                   </span>
                 )}
               </div>
 
-              <div className="relative group">
-                <div className="apple-glass-input w-full p-4 text-base md:text-lg min-h-[90px] max-h-[220px] overflow-y-auto break-words select-all font-mono leading-relaxed bg-slate-950/80 border-slate-700/50">
-                  {output}
-                </div>
+              <div className="stealth-input w-full p-4 text-base min-h-[90px] max-h-[220px] overflow-y-auto break-words select-all font-mono leading-relaxed bg-[#07080c]">
+                {output}
               </div>
 
-              {/* Action Pills */}
-              <div className="flex flex-wrap items-center gap-2 pt-1">
+              {/* Action Buttons */}
+              <div className="flex items-center gap-2 pt-1">
                 <button
                   type="button"
                   onClick={handleCopyCipher}
-                  className="apple-glass-pill px-3.5 py-2 text-xs font-medium text-slate-200 hover:text-white hover:border-white/20 flex items-center gap-1.5 transition-colors"
+                  className="px-3 py-1.5 rounded-lg bg-[#151821] border border-[#222633] text-xs font-medium text-slate-300 hover:text-white hover:border-slate-600 transition-colors flex items-center gap-1.5"
                 >
                   {copiedCipher ? (
                     <>
                       <Check className="w-3.5 h-3.5 text-emerald-400" />
-                      <span className="text-emerald-400">Copied!</span>
+                      <span className="text-emerald-400 font-semibold">Copied</span>
                     </>
                   ) : (
                     <>
@@ -445,70 +358,32 @@ const Index: React.FC = () => {
                 </button>
 
                 {mode === "encrypt" && (
-                  <>
-                    <button
-                      type="button"
-                      onClick={handleCopyLink}
-                      className="apple-glass-pill px-3.5 py-2 text-xs font-medium text-slate-200 hover:text-white hover:border-white/20 flex items-center gap-1.5 transition-colors"
-                    >
-                      {copiedLink ? (
-                        <>
-                          <Check className="w-3.5 h-3.5 text-cyan-400" />
-                          <span className="text-cyan-400">Link Copied!</span>
-                        </>
-                      ) : (
-                        <>
-                          <ExternalLink className="w-3.5 h-3.5 text-cyan-400" />
-                          <span>Copy Decrypt Link</span>
-                        </>
-                      )}
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={handleNativeShare}
-                      className="apple-glass-pill px-3.5 py-2 text-xs font-medium text-slate-200 hover:text-white hover:border-white/20 flex items-center gap-1.5 transition-colors"
-                    >
-                      <Share2 className="w-3.5 h-3.5 text-violet-400" />
-                      <span>Share</span>
-                    </button>
-                  </>
+                  <button
+                    type="button"
+                    onClick={handleCopyLink}
+                    className="px-3 py-1.5 rounded-lg bg-[#151821] border border-[#222633] text-xs font-medium text-slate-300 hover:text-white hover:border-slate-600 transition-colors flex items-center gap-1.5"
+                  >
+                    {copiedLink ? (
+                      <>
+                        <Check className="w-3.5 h-3.5 text-amber-400" />
+                        <span className="text-amber-400 font-semibold">Link Copied</span>
+                      </>
+                    ) : (
+                      <>
+                        <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
+                        <span>Copy Decrypt Link</span>
+                      </>
+                    )}
+                  </button>
                 )}
               </div>
             </div>
           )}
         </div>
 
-        {/* Feature Highlights Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
-          <div className="apple-glass-pill p-3.5 flex items-center gap-3 text-slate-400">
-            <ShieldCheck className="w-5 h-5 text-cyan-400 shrink-0" />
-            <div>
-              <p className="font-semibold text-slate-200">100% Local Execution</p>
-              <p className="text-[11px] text-slate-400">Zero network transmission or logging.</p>
-            </div>
-          </div>
-
-          <div className="apple-glass-pill p-3.5 flex items-center gap-3 text-slate-400">
-            <Zap className="w-5 h-5 text-indigo-400 shrink-0" />
-            <div>
-              <p className="font-semibold text-slate-200">966-Base Permutation</p>
-              <p className="text-[11px] text-slate-400">Deterministic key-seeded shuffle.</p>
-            </div>
-          </div>
-
-          <div className="apple-glass-pill p-3.5 flex items-center gap-3 text-slate-400">
-            <Sparkles className="w-5 h-5 text-violet-400 shrink-0" />
-            <div>
-              <p className="font-semibold text-slate-200">Deflate Stream & CRC32</p>
-              <p className="text-[11px] text-slate-400">Compact density & tamper detection.</p>
-            </div>
-          </div>
-        </div>
-
         {/* Footer */}
-        <footer className="text-center text-xs text-slate-400/80 space-y-1 pt-2">
-          <p>EmojiCipher • End-to-End Client-Side Cryptography</p>
+        <footer className="text-center text-xs text-slate-400/80 pt-2">
+          <span>All encryption runs client-side in memory • Zero network logging</span>
         </footer>
       </main>
     </div>
